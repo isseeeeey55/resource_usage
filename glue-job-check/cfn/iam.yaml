@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template deploys IAM Role/Policy for Glue Job Check.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: IAM Policy Configuration
+        Parameters:
+          - PrefixName
+          - Env
+
+      -
+        Label:
+          default: IAM Role Configuration
+        Parameters:
+          - RoleName
+
+      -
+        Label:
+          default: AWS Account Id for Lambda
+        Parameters:
+          - LambdaAccountId
+
+Parameters:
+  PrefixName:
+    Description: Please enter the PrefixName
+    Type: String
+    Default: is55
+
+  Env:
+    Description: Please select the Env
+    Type: String
+    Default: dev
+    AllowedValues:
+      - poc
+      - dev
+      - stg
+      - prod
+
+  RoleName:
+    Description: Please enter the IAM Role Name
+    Type: String
+    Default: is55-dev-resource-usage-role
+
+  LambdaAccountId:
+    Description: Please enter the LambdaAccountId
+    Type: String
+
+Resources:
+  GlueJobCheckPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub ${PrefixName}-${Env}-glue-job-check-policy
+      Path: /
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "GlueAction"
+            Effect: Allow
+            Action:
+              - "glue:GetJobs"
+              - "glue:GetJobRun"
+              - "glue:ListJobs"
+              - "glue:GetJobRuns"
+              - "glue:GetJob"
+            Resource: "*"
+
+  ResourceUsageRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub ${RoleName}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${LambdaAccountId}:root
+            Action:
+              - "sts:AssumeRole"
+      Path: /
+      ManagedPolicyArns:
+        - !Ref GlueJobCheckPolicy
+
+Outputs:
+  GlueJobCheckPolicy:
+    Description: IAM Policy For Glue Job Check
+    Value: !Ref GlueJobCheckPolicy
+    # Export:
+    #   Name: GlueJobCheckPolicyArn
+
+  ResourceUsageRoleArn:
+    Description: IAM Role For Resource Usage Assume Role
+    Value: !GetAtt ResourceUsageRole.Arn
+    # Export:
+    #   Name: ResourceUsageRoleArn
